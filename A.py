@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
-from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.feature_extraction.text import CountVectorizer
 import difflib
 
 # Load CSV data
@@ -17,12 +16,8 @@ df1 = df[['name', 'desc_snippet', 'popular_tags', 'genre', 'original_price']]
 # Delete missing values
 df2 = pd.DataFrame(df1.dropna())
 
-# Create TF-IDF matrix
-tfidf = TfidfVectorizer(stop_words="english")
-tfidf_matrix = tfidf.fit_transform(df2["desc_snippet"])
-
-# Cosine similarity matrix
-cosine_sim = cosine_similarity(tfidf_matrix, tfidf_matrix)
+# Convert original_price to numeric (it may be stored as a string)
+df2['original_price'] = pd.to_numeric(df2['original_price'], errors='coerce')
 
 # Asking for user input via Streamlit
 game = st.text_input("Please enter a game you like:").lower()
@@ -31,12 +26,10 @@ game = st.text_input("Please enter a game you like:").lower()
 df2['name'] = df2['name'].str.lower()
 
 # Token-based matching function
-def find_similar_games(game, game_list):
-    vectorizer = CountVectorizer().fit_transform([game] + game_list)
-    vectors = vectorizer.toarray()
-    cosine_similarities = cosine_similarity(vectors)
-    similar_games_idx = cosine_similarities[0][1:].argsort()[::-1]
-    return game_list[similar_games_idx[0]]
+def find_similar_games_by_price(game, game_list, price, price_range=5):
+    similar_games = df2[(df2['original_price'] >= price - price_range) & 
+                        (df2['original_price'] <= price + price_range)]
+    return similar_games['name'].tolist()
 
 # Function using difflib to find the closest game name
 def get_closest_match(game_name, game_list):
@@ -56,39 +49,22 @@ if game:
         st.write(f"The closest match found is: '{closest_game}'")
 
         game_index = indices[closest_game]
+        game_price = df2.loc[game_index, 'original_price']
 
-        # Calculate similarity scores for the closest game
-        sim_scores = pd.DataFrame(cosine_sim[game_index], columns=["score"])
+        # Get similar games within a price range of ±5
+        similar_games = find_similar_games_by_price(closest_game, df2['name'].tolist(), game_price)
 
-        # Get the top 10 similar games (excluding the input game itself)
-        game_indices = sim_scores.sort_values("score", ascending=False)[1:11].index
-
-        # Display the recommended games
-        st.write(f"Since you searched for '{closest_game}', here are some similar games:")
-        st.table(df2["name"].iloc[game_indices])
+        if similar_games:
+            st.write(f"Since you searched for '{closest_game}' (Price: {game_price}), here are some games with a similar price range:")
+            st.table(similar_games)
+        else:
+            st.write(f"No similar games found in the price range around '{closest_game}'.")
 
     else:
-        # If no difflib match is found, use token-based matching
         st.write(f"No exact match for '{game}', trying to find similar games using token-based matching...")
-        closest_game = find_similar_games(game, df2['name'].tolist())
-
-        if closest_game:
-            st.write(f"Did you mean '{closest_game}'?")
-
-            game_index = indices[closest_game]
-
-            # Calculate similarity scores for the closest game
-            sim_scores = pd.DataFrame(cosine_sim[game_index], columns=["score"])
-
-            # Get the top 10 similar games
-            game_indices = sim_scores.sort_values("score", ascending=False)[1:11].index
-
-            # Display the recommended games
-            st.write(f"Since you searched for '{closest_game}', here are some similar games:")
-            st.table(df2["name"].iloc[game_indices])
-        else:
-            st.write(f"Sorry, no similar game was found in the dataset.")
+        st.write(f"Sorry, no similar game was found in the dataset.")
 
 # Streamlit app
-st.title("🎮Description Based Recommender🎮")
-st.write("🔎 Find similar games for you based on their description 🔎")
+st.title("🎮Price Based Game Recommender🎮")
+st.write("🔎 Find games within a similar price range 🔎")
+
