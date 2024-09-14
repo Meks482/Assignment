@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import re
 
 # Load CSV data
 path = 'games.csv'
@@ -14,8 +15,20 @@ df1 = df[['name', 'desc_snippet', 'original_price']]
 # Delete missing values
 df2 = pd.DataFrame(df1.dropna())
 
-# Convert original_price to numeric (in case it’s a string)
-df2['original_price'] = pd.to_numeric(df2['original_price'], errors='coerce')
+# Function to clean the price data (removing non-numeric characters)
+def clean_price(price):
+    # Use regex to remove any non-numeric characters except periods
+    price = re.sub(r'[^\d.]', '', str(price))
+    try:
+        return float(price)
+    except ValueError:
+        return None
+
+# Apply the price cleaning function to the 'original_price' column
+df2['original_price'] = df2['original_price'].apply(clean_price)
+
+# Drop any rows where the price could not be converted to a valid float
+df2 = df2.dropna(subset=['original_price'])
 
 # Streamlit app
 st.title("🎮Price Based Game Recommender🎮")
