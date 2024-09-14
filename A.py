@@ -59,11 +59,11 @@ if game_price is not None:
         # Create a DataFrame with the similar games and their prices
         recommended_games = pd.DataFrame({
             "Game Name": similar_games['name'].values,
-            "Price": similar_games['original_price'].values
+            "Price": similar_games['original_price'].apply(lambda x: f"{x:.2f}").values  # Format to 2 decimal places
         })
 
-        # Reset the index to remove the original index numbers
-        recommended_games = recommended_games.reset_index(drop=True)
+        # Reset the index to start from 1 instead of 0
+        recommended_games.index = range(1, len(recommended_games) + 1)
 
         # Display the recommended games
         st.write(f"Here are some games with a price similar to {game_price}:")
