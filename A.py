@@ -23,7 +23,7 @@ st.title("🎮Price Based Game Recommender🎮")
 st.write("🔎 Find games within a similar price range 🔎")
 
 # Asking for user input via Streamlit
-game = st.text_input("Please enter a game you like:").lower()
+game = st.text_input("Please enter a game price you like:").lower()
 
 # Ensure all names in the dataset are lowercase
 df2['name'] = df2['name'].str.lower()
