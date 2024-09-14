@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import difflib
 
 # Load CSV data
 path = 'games.csv'
@@ -22,57 +21,39 @@ df2['original_price'] = pd.to_numeric(df2['original_price'], errors='coerce')
 st.title("🎮Price Based Game Recommender🎮")
 st.write("🔎 Find games within a similar price range 🔎")
 
-# Asking for user input via Streamlit
-game = st.text_input("Please enter a game price you like:").lower()
+# Asking for user input via Streamlit (Expecting a number for price)
+game_price_input = st.text_input("Please enter a price you like:")
 
-# Ensure all names in the dataset are lowercase
-df2['name'] = df2['name'].str.lower()
-
-# Function using difflib to find the closest game name
-def get_closest_match(game_name, game_list):
-    matches = difflib.get_close_matches(game_name, game_list, n=1, cutoff=0.6)
-    return matches[0] if matches else None
-
-# Create an index series for the 'name' column to map game names to their index in the dataframe
-indices = pd.Series(df2.index, index=df2['name']).drop_duplicates()
+# Ensure input is a valid number
+try:
+    game_price = float(game_price_input) if game_price_input else None
+except ValueError:
+    game_price = None
+    st.write("Please enter a valid numeric price.")
 
 # Function to find similar games within a price range
-def find_similar_games_by_price(game_price, price_range=5):
-    similar_games = df2[(df2['original_price'] >= game_price - price_range) & 
-                        (df2['original_price'] <= game_price + price_range)]
+def find_similar_games_by_price(price, price_range=5):
+    similar_games = df2[(df2['original_price'] >= price - price_range) & 
+                        (df2['original_price'] <= price + price_range)]
     return similar_games
 
-# If the user has entered a game name, proceed with the recommendation
-if game:
-    # First, try difflib to find the closest game
-    closest_game = get_closest_match(game, df2['name'].tolist())
+# If the user has entered a valid price, proceed with the recommendation
+if game_price is not None:
+    # Find similar games based on the input price (±5 range)
+    similar_games = find_similar_games_by_price(game_price)
 
-    # Check if a difflib match was found
-    if closest_game:
-        st.write(f"The closest match found is: '{closest_game}'")
+    if not similar_games.empty:
+        # Create a DataFrame with the similar games and their prices
+        recommended_games = pd.DataFrame({
+            "Game Name": similar_games['name'].values,
+            "Price": similar_games['original_price'].values
+        })
 
-        game_index = indices[closest_game]
-        game_price = df2.loc[game_index, 'original_price']
+        # Reset the index to remove the original index numbers
+        recommended_games = recommended_games.reset_index(drop=True)
 
-        # Find similar games based on price (±5 range)
-        similar_games = find_similar_games_by_price(game_price)
-
-        if not similar_games.empty:
-            # Create a DataFrame with the similar games and their prices
-            recommended_games = pd.DataFrame({
-                "Game Name": similar_games['name'].values,
-                "Price": similar_games['original_price'].values
-            })
-
-            # Reset the index to remove the original index numbers
-            recommended_games = recommended_games.reset_index(drop=True)
-
-            # Display the recommended games
-            st.write(f"Since you searched for '{closest_game}' (Price: {game_price}), here are some games with a similar price range:")
-            st.table(recommended_games)
-        else:
-            st.write(f"No similar games found in the price range around '{closest_game}'.")
-
+        # Display the recommended games
+        st.write(f"Here are some games with a price similar to {game_price}:")
+        st.table(recommended_games)
     else:
-        st.write(f"No exact match for '{game}', trying to find similar games using token-based matching...")
-        st.write(f"Sorry, no similar game was found in the dataset.")
+        st.write(f"No similar games found within ±5 price range of {game_price}.")
