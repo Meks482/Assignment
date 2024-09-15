@@ -53,7 +53,7 @@ def find_similar_games_by_price(price, price_range=5):
 # If the user has entered a valid price, proceed with the recommendation
 if game_price is not None:
     # Find similar games based on the input price (±5 range)
-    similar_games = find_similar_games_by_price(game_price)
+    similar_games = find_similar_games_by_price(game_price).head(10)  # Limit to top 10 results
 
     if not similar_games.empty:
         # Create a DataFrame with the similar games and their prices
