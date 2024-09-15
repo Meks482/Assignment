@@ -67,6 +67,6 @@ if game_price is not None:
 
         # Display the recommended games
         st.write(f"Here are some games with a price similar to {game_price}:")
-        st.table(recommended_games).head(10)
+        st.table(recommended_games.head(10))
     else:
         st.write(f"No similar games found within ±5 price range of {game_price}.")
